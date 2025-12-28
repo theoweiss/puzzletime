@@ -62,6 +62,7 @@ cd puzzletime/deploy
 # 4. Configure your reverse proxy (see docs/)
 
 # 5. Access PuzzleTime and login with your admin credentials
+#    See: https://puzzle.github.io/puzzletime/getting-started/first-steps/
 ```
 
 The setup script will:

@@ -1,0 +1,75 @@
+site_name: PuzzleTime Documentation
+site_description: Open source time tracking and resource planning for SMEs
+site_url: https://puzzle.github.io/puzzletime
+repo_url: https://github.com/puzzle/puzzletime
+repo_name: puzzle/puzzletime
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - First Steps: getting-started/first-steps.md
+      - Configuration: getting-started/configuration.md
+  - User Guide:
+      - Time Tracking: guide/time-tracking.md
+      - Orders & Projects: guide/orders.md
+      - Clients: guide/clients.md
+      - Reports: guide/reports.md
+      - Planning: guide/planning.md
+  - Administration:
+      - User Management: admin/users.md
+      - Authentication: admin/authentication.md
+      - Backup & Restore: admin/backup.md
+      - Maintenance: admin/maintenance.md
+  - Reference:
+      - REST API: reference/api.md
+      - Data Model: reference/model.md
+  - Contributing: contributing.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/puzzle/puzzletime
