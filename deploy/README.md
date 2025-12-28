@@ -52,18 +52,52 @@ This deployment includes:
 git clone https://github.com/puzzle/puzzletime.git
 cd puzzletime/deploy
 
-# 2. Run setup (generates secrets, initializes database, creates admin user)
+# 2. (Optional) Use community image with ARM64 support
+#    Edit docker-compose.prod.yml and change image to:
+#    ghcr.io/theoweiss/puzzletime:improve-theo
+
+# 3. Run setup (generates secrets, initializes database, creates admin user)
 ./bin/setup.sh
 
-# 3. Configure your reverse proxy (see docs/)
+# 4. Configure your reverse proxy (see docs/)
 
-# 4. Access PuzzleTime and login with your admin credentials
+# 5. Access PuzzleTime and login with your admin credentials
 ```
 
 The setup script will:
 1. Generate secure passwords and secrets
 2. Initialize the database
 3. Prompt you to create an admin user (or use `ADMIN_*` env vars for automation)
+
+## Docker Images
+
+By default, `docker-compose.prod.yml` uses `ghcr.io/puzzle/puzzletime:latest`.
+
+### Available Images
+
+| Image | Description |
+|-------|-------------|
+| `ghcr.io/puzzle/puzzletime:latest` | Official release (when available) |
+| `ghcr.io/theoweiss/puzzletime:improve-theo` | Community build with deployment improvements |
+| `ghcr.io/theoweiss/puzzletime:latest` | Community build (latest main branch) |
+
+### Using an Alternative Image
+
+Edit `docker-compose.prod.yml` and change the image for both `web` and `jobs` services:
+
+```yaml
+services:
+  web:
+    image: ghcr.io/theoweiss/puzzletime:improve-theo
+    # ...
+
+  jobs:
+    image: ghcr.io/theoweiss/puzzletime:improve-theo
+    # ...
+```
+
+> **Note:** The `theoweiss` images include multi-platform support (AMD64 + ARM64)
+> and are built automatically from the latest source.
 
 ## Local Testing
 
