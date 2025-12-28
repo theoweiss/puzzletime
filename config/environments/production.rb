@@ -72,11 +72,13 @@ Rails.application.configure do
   # Use a different cache store in production.
   # config.cache_store = :mem_cache_store
 
+  # Session cookie security: secure=true requires HTTPS (recommended for production)
+  # Set RAILS_SESSION_SECURE=false for local testing over HTTP
   config.session_store(
     ActionDispatch::Session::CacheStore,
     expire_after: 12.hours,
     same_site: :lax,
-    secure: true
+    secure: ENV.fetch('RAILS_SESSION_SECURE', 'true') == 'true'
   )
 
   # Use a real queuing backend for Active Job (and separate queues per environment).

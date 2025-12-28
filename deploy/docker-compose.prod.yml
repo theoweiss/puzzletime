@@ -1,0 +1,187 @@
+#  Copyright (c) 2006-2025, Puzzle ITC GmbH. This file is part of
+#  PuzzleTime and licensed under the Affero General Public License version 3
+#  or later. See the COPYING file at the top-level directory or at
+#  https://github.com/puzzle/puzzletime.
+
+# Production Docker Compose for PuzzleTime
+# Works with any reverse proxy (Traefik, Caddy, Nginx) or direct access
+# See deploy/docs/ for reverse proxy setup guides
+
+---
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Rails Application
+  # =============================================================================
+  web:
+    image: ghcr.io/puzzle/puzzletime:latest
+    # Or build from source:
+    # build:
+    #   context: ..
+    #   dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - RAILS_ENV=production
+      - RAILS_LOG_TO_STDOUT=true
+      - RAILS_SERVE_STATIC_FILES=true
+      - RAILS_DB_HOST=db
+      - RAILS_DB_USERNAME=${POSTGRES_USER:-puzzletime}
+      - RAILS_DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - RAILS_DB_NAME=${POSTGRES_DB:-puzzletime_production}
+      - RAILS_MEMCACHED_HOST=cache
+      - RAILS_MEMCACHED_PORT=11211
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
+      # SMTP
+      - RAILS_MAIL_URL_HOST=${DOMAIN:-localhost}
+      - SMTP_ADDRESS=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER_NAME=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - RAILS_PTIME_MAILER_FROM=${MAILER_FROM:-puzzletime@localhost}
+      # Authentication
+      - AUTH_DB_ACTIVE=${AUTH_DB_ACTIVE:-true}
+      - AUTH_KEYCLOAK_ACTIVE=${AUTH_KEYCLOAK_ACTIVE:-false}
+      - AUTH_KEYCLOAK_HOST=${AUTH_KEYCLOAK_HOST:-}
+      - AUTH_KEYCLOAK_REALM=${AUTH_KEYCLOAK_REALM:-}
+      - AUTH_KEYCLOAK_CLIENT=${AUTH_KEYCLOAK_CLIENT:-}
+      - AUTH_KEYCLOAK_SECRET=${AUTH_KEYCLOAK_SECRET:-}
+      - RAILS_LDAP_HOST=${LDAP_HOST:-}
+      - RAILS_LDAP_PORT=${LDAP_PORT:-636}
+      # Timezone
+      - RAILS_TIME_ZONE=${TIMEZONE:-Europe/Zurich}
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    networks:
+      - internal
+      # Uncomment if using Traefik on external network:
+      # - traefik_network
+    # Uncomment for direct access without reverse proxy:
+    # ports:
+    #   - "3000:3000"
+
+    # ---------------------------------------------------------------------------
+    # Traefik Labels (optional - uncomment if using Traefik)
+    # ---------------------------------------------------------------------------
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.puzzletime.rule=Host(`${DOMAIN}`)"
+    #   - "traefik.http.routers.puzzletime.entrypoints=websecure"
+    #   - "traefik.http.routers.puzzletime.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.puzzletime.loadbalancer.server.port=3000"
+    #   - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik_network}"
+
+  # =============================================================================
+  # Background Job Worker
+  # =============================================================================
+  jobs:
+    image: ghcr.io/puzzle/puzzletime:latest
+    # Or build from source:
+    # build:
+    #   context: ..
+    #   dockerfile: Dockerfile
+    command: bin/delayed_job run
+    restart: unless-stopped
+    environment:
+      - RAILS_ENV=production
+      - RAILS_LOG_TO_STDOUT=true
+      - RAILS_DB_HOST=db
+      - RAILS_DB_USERNAME=${POSTGRES_USER:-puzzletime}
+      - RAILS_DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - RAILS_DB_NAME=${POSTGRES_DB:-puzzletime_production}
+      - RAILS_MEMCACHED_HOST=cache
+      - RAILS_MEMCACHED_PORT=11211
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
+      # SMTP (for sending emails from background jobs)
+      - SMTP_ADDRESS=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER_NAME=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - RAILS_PTIME_MAILER_FROM=${MAILER_FROM:-puzzletime@localhost}
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    networks:
+      - internal
+
+  # =============================================================================
+  # PostgreSQL Database
+  # =============================================================================
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-puzzletime}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=${POSTGRES_DB:-puzzletime_production}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-puzzletime}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # ---------------------------------------------------------------------------
+    # Ofelia Backup Labels
+    # ---------------------------------------------------------------------------
+    labels:
+      # Daily backup at 2:00 AM
+      - "ofelia.job-exec.puzzletime-backup.schedule=0 2 * * *"
+      - "ofelia.job-exec.puzzletime-backup.command=sh -c 'pg_dump -U puzzletime puzzletime_production | gzip > /backups/puzzletime_$$(date +%Y%m%d_%H%M%S).sql.gz && echo Backup completed'"
+      # Cleanup old backups at 3:00 AM (keep 7 days)
+      - "ofelia.job-exec.puzzletime-cleanup.schedule=0 3 * * *"
+      - "ofelia.job-exec.puzzletime-cleanup.command=find /backups -name '*.sql.gz' -mtime +7 -delete"
+
+  # =============================================================================
+  # Memcached Cache
+  # =============================================================================
+  cache:
+    image: memcached:alpine
+    restart: unless-stopped
+    command: memcached -m 64
+    networks:
+      - internal
+
+  # =============================================================================
+  # Ofelia Job Scheduler (for backups) - OPTIONAL
+  # =============================================================================
+  # Uncomment this service if you don't have Ofelia running elsewhere.
+  # If you already have Ofelia for other services, it will automatically
+  # pick up the backup labels on the db container.
+  #
+  # ofelia:
+  #   image: mcuadros/ofelia:latest
+  #   restart: unless-stopped
+  #   command: daemon --docker
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - internal
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  internal:
+    driver: bridge
+  # Uncomment if using Traefik on external network:
+  # traefik_network:
+  #   external: true
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  db-data:
+...
+

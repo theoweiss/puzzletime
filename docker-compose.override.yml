@@ -7,7 +7,7 @@
 # This file is automatically loaded by docker-compose alongside docker-compose.yml
 
 ---
-version: '3'
+version: "3"
 
 services:
   web:
@@ -15,7 +15,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     ports:
-      - '3000:3000'
+      - "3000:3000"
     volumes:
       - .:/app
       - bundle_cache:/usr/local/bundle
@@ -58,9 +58,7 @@ services:
   ptimecache:
     image: memcached:alpine
     ports:
-      - '11211:11211'
+      - "11211:11211"
 
 volumes:
   bundle_cache:
-...
-
