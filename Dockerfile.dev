@@ -1,0 +1,39 @@
+#  Copyright (c) 2006-2025, Puzzle ITC GmbH. This file is part of
+#  PuzzleTime and licensed under the Affero General Public License version 3
+#  or later. See the COPYING file at the top-level directory or at
+#  https://github.com/puzzle/puzzletime.
+
+# Development Dockerfile - optimized for local development with hot reload
+FROM ruby:3.2.1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    nodejs \
+    npm \
+    libvips-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Install bundler
+RUN gem install bundler:2.6.7
+
+# Copy Gemfile first for better caching
+COPY Gemfile Gemfile.lock ./
+
+# Install gems (without production-only gems)
+RUN bundle config set --local without 'metrics' \
+    && bundle install --jobs 4
+
+# Copy the rest of the application
+COPY . .
+
+# Expose port 3000
+EXPOSE 3000
+
+# Default command - start Rails server
+CMD ["bin/rails", "server", "-b", "0.0.0.0"]
+
