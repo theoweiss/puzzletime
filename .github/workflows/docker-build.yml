@@ -10,16 +10,16 @@ on:
     branches:
       - main
       - master
-      - 'feature/**'
-      - 'improve/**'
-      - 'deploy-*'
+      - "feature/**"
+      - "improve/**"
+      - "deploy-*"
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
     branches:
       - main
       - master
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch: # Allow manual trigger
 
 env:
   REGISTRY: ghcr.io

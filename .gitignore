@@ -11,6 +11,7 @@
 # Ignore local config files
 /.envrc
 /.env*
+deploy/.env*
 .idea/
 *.iml
 /.byebug_history
